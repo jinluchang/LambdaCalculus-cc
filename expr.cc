@@ -116,17 +116,23 @@ Expr * eval(Expr * expr, Env * env) {
     } else if (TLam == tag) {
         ans = newClosure(expr->lam, env);
     } else if (TApp == tag) {
-        Expr * fun = eval(expr->app.fun, env);
-        if (TClosure == fun->tag) {
-            Expr * arg = newThunk(expr->app.arg, env);
-            ans = eval(fun->closure.def.body, addToEnv(fun->closure.def.parm, arg, fun->closure.env));
-        } else {
-            Expr * arg = eval(expr->app.arg, env);
-            ans = newApp(fun, arg);
-        }
+        ans = apply(expr->app.fun, expr->app.arg, env);
     } else {
         ans = NULL;
         cerr << "eval : tag = " << tag << endl;
+    }
+    return ans;
+}
+
+Expr * apply(Expr * fun, Expr * arg, Env * env) {
+    Expr * ans;
+    fun = eval(fun, env);
+    if (TClosure == fun->tag) {
+        arg = newThunk(arg, env);
+        ans = eval(fun->closure.def.body, addToEnv(fun->closure.def.parm, arg, fun->closure.env));
+    } else {
+        arg = eval(arg, env);
+        ans = newApp(fun, arg);
     }
     return ans;
 }

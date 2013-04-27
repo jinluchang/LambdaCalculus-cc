@@ -63,6 +63,9 @@ public :
 	Env * next;
 };
 
+Expr * eval(Expr * expr, Env * env);
+Expr * apply(Expr * fun, Expr * arg, Env * env);
+
 std::string showExpr(Expr * expr);
 std::string showAExpr(Expr * expr);
 

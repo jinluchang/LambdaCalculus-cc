@@ -20,18 +20,6 @@ Expr * newVar(const char * name_cstr) {
     return newVar(name);
 }
 
-Expr * newFreeVar(string * name) {
-    Expr * var = new Expr;
-    var->tag = TFreeVar;
-    var->var.name = name;
-    return var;
-}
-
-Expr * newFreeVar(const char * name_cstr) {
-    string * name = new string(name_cstr);
-    return newFreeVar(name);
-}
-
 Expr * newLam(string * parm, Expr * body) {
     Expr * lam = new Expr;
     lam->tag = TLam;
@@ -53,98 +41,180 @@ Expr * newApp(Expr * fun, Expr * arg) {
     return app;
 }
 
-Expr * newClosure(Lam def, Env * env) {
-    Expr * closure = new Expr;
+ExprB * newVarB(string * name) {
+    ExprB * var = new ExprB;
+    var->tag = TVarB;
+    var->var.name = name;
+    return var;
+}
+
+ExprB * newBoundB(int index) {
+    ExprB * bound = new ExprB;
+    bound->tag = TBoundB;
+    bound->bound.index = index;
+    return bound;
+}
+
+ExprB * newLamB(ExprB * body) {
+    ExprB * lam = new ExprB;
+    lam->tag = TLamB;
+    lam->lam.body = body;
+    return lam;
+}
+
+ExprB * newAppB(ExprB * fun, ExprB * arg) {
+    ExprB * app = new ExprB;
+    app->tag = TAppB;
+    app->app.fun = fun;
+    app->app.arg = arg;
+    return app;
+}
+
+ExprC * newVarC(string * name) {
+    ExprC * var = new ExprC;
+    var->tag = TVarC;
+    var->var.name = name;
+    return var;
+}
+
+ExprC * newAppC(ExprC * fun, ExprC * arg) {
+    ExprC * app = new ExprC;
+    app->tag = TAppC;
+    app->app.fun = fun;
+    app->app.arg = arg;
+    return app;
+}
+
+ExprC * newClosure(LamB def, EnvC * env) {
+    ExprC * closure = new ExprC;
     closure->tag = TClosure;
     closure->closure.def = def;
     closure->closure.env = env;
     return closure;
 }
 
-Expr * newThunk(Expr * expr, Env * env) {
-    Expr * thunk = new Expr;
+ExprC * newThunk(ExprB * expr, EnvC * env) {
+    ExprC * thunk = new ExprC;
     thunk->tag = TThunk;
     thunk->thunk.expr = expr;
     thunk->thunk.env = env;
     return thunk;
 }
 
-Env * emptyEnv() {
+EnvB * emptyEnvB() {
     return NULL;
 }
 
-Env * addToEnv(string * name, Expr * value, Env * oldEnv) {
-    Env * env = new Env;
+EnvB * addToEnvB(string * name, EnvB * oldEnv) {
+    EnvB * env = new EnvB;
     env->name = name;
+    env->next = oldEnv;
+    return env;
+}
+
+ExprB * lookupEnvB(Var var, EnvB * env) {
+    int index = 0;
+    while (NULL != env) {
+        if (0 == var.name->compare(*(env->name))) {
+            return newBoundB(index);
+        } else {
+            index++;
+            env = env->next;
+        }
+    }
+    return newVarB(var.name);
+}
+
+EnvC * emptyEnvC() {
+    return NULL;
+}
+
+EnvC * addToEnvC(ExprC * value, EnvC * oldEnv) {
+    EnvC * env = new EnvC;
     env->value = value;
     env->next = oldEnv;
     return env;
 }
 
-Expr * lookupEnv(string * name, Env * env) {
-    while (NULL != env) {
-        if (0 == name->compare(*(env->name))) {
-            return env->value;
-        } else {
-            env = env->next;
-        }
+ExprC * lookupEnvC(BoundB bound, EnvC * env) {
+    while (0 != bound.index) {
+        bound.index--;
+        env = env->next;
     }
-    return NULL;
+    return env->value;
 }
 
-Expr * eval(Expr * expr, Env * env) {
-    Expr * ans;
+ExprB * analysis(Expr * expr, EnvB * env) {
+    ExprB * ans;
     Tag tag = expr->tag;
     if (TVar == tag) {
-        ans = lookupEnv(expr->var.name, env);
-        if (NULL == ans) {
-            ans = newFreeVar(expr->var.name);
-        } else if (TThunk == ans->tag) {
+        ans = lookupEnvB(expr->var, env);
+    } else if (TLam == tag) {
+        ans = newLamB(analysis(expr->lam.body, addToEnvB(expr->lam.parm, env)));
+    } else if (TApp == tag) {
+        ExprB * fun = analysis(expr->app.fun, env);
+        ExprB * arg = analysis(expr->app.arg, env);
+        ans = newAppB(fun, arg);
+    } else {
+        cerr << "analysis : tag = " << tag << endl;
+        ans = NULL;
+    }
+    return ans;
+}
+
+ExprC * eval(ExprB * expr, EnvC * env) {
+    ExprC * ans;
+    TagB tag = expr->tag;
+    if (TVarB == tag) {
+        ans = newVarC(expr->var.name);
+    } else if (TBoundB == tag) {
+        ans = lookupEnvC(expr->bound, env);
+        if (TThunk == ans->tag) {
             *ans = *eval(ans->thunk.expr, ans->thunk.env);
         }
-    } else if (TLam == tag) {
+    } else if (TLamB == tag) {
         ans = newClosure(expr->lam, env);
-    } else if (TApp == tag) {
+    } else if (TAppB == tag) {
         ans = apply(expr->app.fun, expr->app.arg, env);
     } else {
-        ans = NULL;
         cerr << "eval : tag = " << tag << endl;
+        ans = NULL;
     }
     return ans;
 }
 
-Expr * apply(Expr * fun, Expr * arg, Env * env) {
-    Expr * ans;
-    fun = eval(fun, env);
-    if (TClosure == fun->tag) {
-        arg = newThunk(arg, env);
-        ans = eval(fun->closure.def.body, addToEnv(fun->closure.def.parm, arg, fun->closure.env));
+ExprC * apply(ExprB * fun, ExprB * arg, EnvC * env) {
+    ExprC * ans;
+    ExprC * funC = eval(fun, env);
+    if (TClosure == funC->tag) {
+        ExprC * argC = newThunk(arg, env);
+        ans = eval(funC->closure.def.body, addToEnvC(argC, funC->closure.env));
     } else {
-        arg = eval(arg, env);
-        ans = newApp(fun, arg);
+        ExprC * argC = eval(arg, env);
+        ans = newAppC(funC, argC);
     }
     return ans;
 }
 
-Expr * freshVar() {
+ExprC * freshVar() {
     static int k = 0;
     ostringstream out;
     out << "$var" << k;
     string * name = new string(out.str());
     k++;
-    return newFreeVar(name);
+    return newVarC(name);
 }
 
-Expr * padVar(Expr * expr) {
+Expr * padVar(ExprC * expr) {
     Expr * ans;
-    Tag tag = expr->tag;
-    if (TFreeVar == tag) {
+    TagC tag = expr->tag;
+    if (TVarC == tag) {
         ans = newVar(expr->var.name);
-    } else if (TApp == tag) {
+    } else if (TAppC == tag) {
         ans = newApp(padVar(expr->app.fun), padVar(expr->app.arg));
     } else if (TClosure == tag) {
-        Expr * fvar = freshVar();
-        Env * env = addToEnv(expr->closure.def.parm, fvar, expr->closure.env);
+        ExprC * fvar = freshVar();
+        EnvC * env = addToEnvC(fvar, expr->closure.env);
         ans = newLam(fvar->var.name, padVar(eval(expr->closure.def.body, env)));
     } else {
         ans = NULL;
@@ -156,7 +226,7 @@ Expr * padVar(Expr * expr) {
 string showExpr(Expr * expr) {
     string ans;
     Tag tag = expr->tag;
-    if (TVar == tag || TFreeVar == tag) {
+    if (TVar == tag) {
         ans = *(expr->var.name);
     } else if (TLam == tag) {
         ans += "(";
@@ -178,7 +248,7 @@ string showExpr(Expr * expr) {
 string showAExpr(Expr * expr) {
     string ans;
     Tag tag = expr->tag;
-    if (TVar == tag || TFreeVar == tag) {
+    if (TVar == tag) {
         ans = *(expr->var.name);
     } else if (TLam == tag) {
         ans += "(";
@@ -644,10 +714,12 @@ int main() {
         newVar("8")))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
 
         ;
-    cout << "hello world" << endl;
+
+    ExprB * idB = analysis(id, emptyEnvB());
+    ExprB * exprB = analysis(expr, emptyEnvB());
     cout << showExpr(id) << endl;
     cout << showExpr(expr) << endl;
-    cout << showExpr(padVar(eval(id, emptyEnv()))) << endl;
-    cout << showExpr(padVar(eval(expr, emptyEnv()))) << endl;
+    cout << showExpr(padVar(eval(idB, emptyEnvC()))) << endl;
+    cout << showExpr(padVar(eval(exprB, emptyEnvC()))) << endl;
     return 0;
 }

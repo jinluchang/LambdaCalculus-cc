@@ -6,14 +6,10 @@
 enum Tag {
 	TVar,
 	TLam,
-	TApp,
-	TFreeVar,
-	TClosure,
-	TThunk,
+	TApp
 };
 
 class Expr;
-class Env;
 
 class Var {
 public :
@@ -26,22 +22,10 @@ public :
 	Expr * body;
 };
 
-class Closure {
-public :
-	Lam def;
-	Env * env;
-};
-
 class App {
 public :
 	Expr * fun;
 	Expr * arg;
-};
-
-class Thunk {
-public :
-	Expr * expr;
-	Env * env;
 };
 
 class Expr {
@@ -51,20 +35,109 @@ public :
 		Var var;
 		Lam lam;
 		App app;
+	};
+};
+
+enum TagB {
+	TVarB,
+	TBoundB,
+	TLamB,
+	TAppB
+};
+
+class ExprB;
+
+class VarB {
+public :
+	std::string * name;
+};
+
+class BoundB {
+public :
+	int index;
+};
+
+class LamB {
+public :
+	ExprB * body;
+};
+
+class AppB {
+public :
+	ExprB * fun;
+	ExprB * arg;
+};
+
+class ExprB {
+public :
+	TagB tag;
+	union {
+		VarB var;
+		BoundB bound;
+		LamB lam;
+		AppB app;
+	};
+};
+
+class EnvB {
+public :
+	std::string * name;
+	EnvB * next;
+};
+
+enum TagC {
+	TVarC,
+	TAppC,
+	TClosure,
+	TThunk
+};
+
+class ExprC;
+class EnvC;
+
+class VarC {
+public :
+	std::string * name;
+};
+
+class AppC {
+public :
+	ExprC * fun;
+	ExprC * arg;
+};
+
+class Closure {
+public :
+	LamB def;
+	EnvC * env;
+};
+
+class Thunk {
+public :
+	ExprB * expr;
+	EnvC * env;
+};
+
+class ExprC {
+public :
+	TagC tag;
+	union {
+		VarC var;
+		AppC app;
 		Closure closure;
 		Thunk thunk;
 	};
 };
 
-class Env {
+class EnvC {
 public :
 	std::string * name;
-	Expr * value;
-	Env * next;
+	ExprC * value;
+	EnvC * next;
 };
 
-Expr * eval(Expr * expr, Env * env);
-Expr * apply(Expr * fun, Expr * arg, Env * env);
+ExprC * eval(ExprB * expr, EnvC * env);
+ExprC * apply(ExprB * fun, ExprB * arg, EnvC * env);
 
 std::string showExpr(Expr * expr);
 std::string showAExpr(Expr * expr);

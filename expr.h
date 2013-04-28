@@ -1,95 +1,97 @@
+/* vim : set expandtab : */
+
 #ifndef EXPR_H
 #define EXPR_H
 
 #include <string>
 
 enum Tag {
-	TVar,
-	TLam,
-	TApp
+    TVar,
+    TLam,
+    TApp
 };
 
 class Expr;
 
 class Var {
 public :
-	std::string * name;
+    std::string * name;
 };
 
 class Lam {
 public :
-	std::string * parm;
-	Expr * body;
+    std::string * parm;
+    Expr * body;
 };
 
 class App {
 public :
-	Expr * fun;
-	Expr * arg;
+    Expr * fun;
+    Expr * arg;
 };
 
 class Expr {
 public :
-	Tag tag;
-	union {
-		Var var;
-		Lam lam;
-		App app;
-	};
+    Tag tag;
+    union {
+        Var var;
+        Lam lam;
+        App app;
+    };
 };
 
 enum TagB {
-	TVarB,
-	TBoundB,
-	TLamB,
-	TAppB
+    TVarB,
+    TBoundB,
+    TLamB,
+    TAppB
 };
 
 class ExprB;
 
 class VarB {
 public :
-	std::string * name;
+    std::string * name;
 };
 
 class BoundB {
 public :
-	int index;
+    int index;
 };
 
 class LamB {
 public :
-	ExprB * body;
+    ExprB * body;
 };
 
 class AppB {
 public :
-	ExprB * fun;
-	ExprB * arg;
+    ExprB * fun;
+    ExprB * arg;
 };
 
 class ExprB {
 public :
-	TagB tag;
-	union {
-		VarB var;
-		BoundB bound;
-		LamB lam;
-		AppB app;
-	};
+    TagB tag;
+    union {
+        VarB var;
+        BoundB bound;
+        LamB lam;
+        AppB app;
+    };
 };
 
 class EnvB {
 public :
-	std::string * name;
-	EnvB * next;
+    std::string * name;
+    EnvB * next;
 };
 
 enum TagC {
-	TVarC,
-	TAppC,
-	TClosure,
-	TThunk
+    TVarC,
+    TAppC,
+    TClosure,
+    TThunk
 };
 
 class ExprC;
@@ -97,43 +99,43 @@ class EnvC;
 
 class VarC {
 public :
-	std::string * name;
+    std::string * name;
 };
 
 class AppC {
 public :
-	ExprC * fun;
-	ExprC * arg;
+    ExprC * fun;
+    ExprC * arg;
 };
 
 class Closure {
 public :
-	LamB def;
-	EnvC * env;
+    LamB def;
+    EnvC * env;
 };
 
 class Thunk {
 public :
-	ExprB * expr;
-	EnvC * env;
+    ExprB * expr;
+    EnvC * env;
 };
 
 class ExprC {
 public :
-	TagC tag;
-	union {
-		VarC var;
-		AppC app;
-		Closure closure;
-		Thunk thunk;
-	};
+    TagC tag;
+    union {
+        VarC var;
+        AppC app;
+        Closure closure;
+        Thunk thunk;
+    };
 };
 
 class EnvC {
 public :
-	std::string * name;
-	ExprC * value;
-	EnvC * next;
+    std::string * name;
+    ExprC * value;
+    EnvC * next;
 };
 
 ExprC * eval(ExprB * expr, EnvC * env);

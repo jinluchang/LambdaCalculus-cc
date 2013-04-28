@@ -8,7 +8,7 @@
 enum Tag {
     TVar,
     TLam,
-    TApp
+    TApp,
 };
 
 class Expr;
@@ -44,7 +44,7 @@ enum TagB {
     TVarB,
     TBoundB,
     TLamB,
-    TAppB
+    TAppB,
 };
 
 class ExprB;
@@ -91,7 +91,7 @@ enum TagC {
     TVarC,
     TAppC,
     TClosure,
-    TThunk
+    TThunk,
 };
 
 class ExprC;
@@ -133,10 +133,15 @@ public :
 
 class EnvC {
 public :
-    std::string * name;
     ExprC * value;
     EnvC * next;
 };
+
+Expr * newVar(std::string * name);
+Expr * newVar(const char * name_cstr);
+Expr * newLam(std::string * parm, Expr * body);
+Expr * newLam(const char * parm_cstr, Expr * body);
+Expr * newApp(Expr * fun, Expr * arg);
 
 ExprC * eval(ExprB * expr, EnvC * env);
 ExprC * apply(ExprB * fun, ExprB * arg, EnvC * env);

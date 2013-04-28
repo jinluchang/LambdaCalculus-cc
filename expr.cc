@@ -1,8 +1,8 @@
 /* vim: set expandtab : */
 
-#include<iostream>
-#include<sstream>
-#include<string>
+#include <iostream>
+#include <sstream>
+#include <string>
 
 #include "expr.h"
 
@@ -17,15 +17,6 @@ Expr * newVar(string * name) {
 
 Expr * newVar(const char * name_cstr) {
     string * name = new string(name_cstr);
-    return newVar(name);
-}
-
-Expr * freshVar() {
-    static int k = 0;
-    ostringstream out;
-    out << "$var" << k;
-    string * name = new string(out.str());
-    k++;
     return newVar(name);
 }
 
@@ -111,8 +102,6 @@ Expr * eval(Expr * expr, Env * env) {
         } else if (TThunk == ans->tag) {
             *ans = *eval(ans->thunk.expr, ans->thunk.env);
         }
-    } else if (TFreeVar == tag) {
-        ans = expr;
     } else if (TLam == tag) {
         ans = newClosure(expr->lam, env);
     } else if (TApp == tag) {
@@ -137,6 +126,33 @@ Expr * apply(Expr * fun, Expr * arg, Env * env) {
     return ans;
 }
 
+Expr * freshVar() {
+    static int k = 0;
+    ostringstream out;
+    out << "$var" << k;
+    string * name = new string(out.str());
+    k++;
+    return newFreeVar(name);
+}
+
+Expr * padVar(Expr * expr) {
+    Expr * ans;
+    Tag tag = expr->tag;
+    if (TFreeVar == tag) {
+        ans = newVar(expr->var.name);
+    } else if (TApp == tag) {
+        ans = newApp(padVar(expr->app.fun), padVar(expr->app.arg));
+    } else if (TClosure == tag) {
+        Expr * fvar = freshVar();
+        Env * env = addToEnv(expr->closure.def.parm, fvar, expr->closure.env);
+        ans = newLam(fvar->var.name, padVar(eval(expr->closure.def.body, env)));
+    } else {
+        ans = NULL;
+        cerr << "padVar : tag = " << tag << endl;
+    }
+    return ans;
+}
+
 string showExpr(Expr * expr) {
     string ans;
     Tag tag = expr->tag;
@@ -153,18 +169,6 @@ string showExpr(Expr * expr) {
         ans += showExpr(expr->app.fun);
         ans += " ";
         ans += showAExpr(expr->app.arg);
-    } else if (TClosure == tag) {
-        Expr * fvar = freshVar();
-        ans += "(";
-        ans += "\\";
-        ans += *(fvar->var.name);
-        ans += " -> ";
-        ans += showExpr(
-                eval(expr->closure.def.body,
-                     addToEnv(expr->closure.def.parm,
-                              fvar,
-                              expr->closure.env)));
-        ans += ")";
     } else {
         cerr << "showAExpr : tag = " << tag << endl;
     }
@@ -188,18 +192,6 @@ string showAExpr(Expr * expr) {
         ans += showExpr(expr->app.fun);
         ans += " ";
         ans += showAExpr(expr->app.arg);
-        ans += ")";
-    } else if (TClosure == tag) {
-        Expr * fvar = freshVar();
-        ans += "(";
-        ans += "\\";
-        ans += *(fvar->var.name);
-        ans += " -> ";
-        ans += showExpr(
-                eval(expr->closure.def.body,
-                     addToEnv(expr->closure.def.parm,
-                              fvar,
-                              expr->closure.env)));
         ans += ")";
     } else {
         cerr << "showExpr : tag = " << tag << endl;
@@ -649,13 +641,13 @@ int main() {
         newLam("searchNQ",
         newApp(newVar("length"),
         newApp(newVar("searchNQ"),
-        newVar("4")))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+        newVar("8")))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
 
         ;
     cout << "hello world" << endl;
     cout << showExpr(id) << endl;
     cout << showExpr(expr) << endl;
-    cout << showExpr(eval(id, emptyEnv())) << endl;
-    cout << showExpr(eval(expr, emptyEnv())) << endl;
+    cout << showExpr(padVar(eval(id, emptyEnv()))) << endl;
+    cout << showExpr(padVar(eval(expr, emptyEnv()))) << endl;
     return 0;
 }

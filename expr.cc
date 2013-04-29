@@ -237,50 +237,42 @@ Expr * padVar(ExprC * expr) {
     return ans;
 }
 
-string showExpr(Expr * expr) {
+string showParenthese(string s) {
+    string ans;
+    ans += "(";
+    ans += s;
+    ans += ")";
+    return ans;
+}
+
+string showExprPrec(int prec, Expr * expr) {
     string ans;
     Tag tag = expr->tag;
     if (TVar == tag) {
         ans = *(expr->var.name);
     } else if (TLam == tag) {
-        ans += "(";
         ans += "\\";
         ans += *(expr->lam.parm);
         ans += " -> ";
-        ans += showExpr(expr->lam.body);
-        ans += ")";
+        ans += showExprPrec(0, expr->lam.body);
+        if (0 < prec) {
+            ans = showParenthese(ans);
+        }
     } else if (TApp == tag) {
-        ans += showExpr(expr->app.fun);
+        ans += showExprPrec(1, expr->app.fun);
         ans += " ";
-        ans += showAExpr(expr->app.arg);
+        ans += showExprPrec(2, expr->app.arg);
+        if (1 < prec) {
+            ans = showParenthese(ans);
+        }
     } else {
         cerr << "showAExpr : tag = " << tag << endl;
     }
     return ans;
 }
 
-string showAExpr(Expr * expr) {
-    string ans;
-    Tag tag = expr->tag;
-    if (TVar == tag) {
-        ans = *(expr->var.name);
-    } else if (TLam == tag) {
-        ans += "(";
-        ans += "\\";
-        ans += *(expr->lam.parm);
-        ans += " -> ";
-        ans += showExpr(expr->lam.body);
-        ans += ")";
-    } else if (TApp == tag) {
-        ans += "(";
-        ans += showExpr(expr->app.fun);
-        ans += " ";
-        ans += showAExpr(expr->app.arg);
-        ans += ")";
-    } else {
-        cerr << "showExpr : tag = " << tag << endl;
-    }
-    return ans;
+string showExpr(Expr * expr) {
+    return showExprPrec(0, expr);
 }
 
 int main() {

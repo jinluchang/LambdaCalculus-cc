@@ -1,4 +1,4 @@
-/* vim : set expandtab : */
+/* vim: set expandtab : */
 
 #ifndef EXPR_H
 #define EXPR_H
@@ -92,6 +92,7 @@ enum TagC {
     TAppC,
     TClosure,
     TThunk,
+    TBlackHole,
 };
 
 class ExprC;

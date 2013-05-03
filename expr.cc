@@ -184,6 +184,7 @@ ExprC * eval(ExprB * expr, EnvC * env) {
     } else if (TBoundB == tag) {
         ans = lookupEnvC(expr->bound, env);
         if (TThunk == ans->tag) {
+            ans->tag = TBlackHole;
             *ans = *eval(ans->thunk.expr, ans->thunk.env);
         }
     } else if (TLamB == tag) {
@@ -210,6 +211,99 @@ ExprC * apply(ExprB * fun, ExprB * arg, EnvC * env) {
     return ans;
 }
 
+enum EvaluateEntryLabel {
+    LEval,
+    LUpdate,
+    LApply,
+    LMkApp,
+};
+
+class EvaluateFrame {
+public :
+    EvaluateEntryLabel entry;
+    ExprB * expr;
+    EnvC * env;
+    ExprC * tmp;
+};
+
+ExprC * evaluate(ExprB * expr, EnvC * env) {
+    ExprC * ans = NULL;
+    const int MAX_EVALUATION_STACK_SIZE = 10000;
+    EvaluateFrame stack[MAX_EVALUATION_STACK_SIZE];
+    int sp = 0;
+    stack[0].entry = LEval;
+    stack[0].expr = expr;
+    stack[0].env = env;
+    stack[0].tmp = NULL;
+    while (0 <= sp) {
+        EvaluateEntryLabel entry = stack[sp].entry;
+        ExprB * expr = stack[sp].expr;
+        EnvC * env = stack[sp].env;
+        if (LEval == entry) {
+            TagB tag = stack[sp].expr->tag;
+            if (TVarB == tag) {
+                ans = newVarC(expr->var.name);
+                sp--;
+            } else if (TBoundB == tag) {
+                ans = lookupEnvC(expr->bound, env);
+                if (TThunk == ans->tag) {
+                    ans->tag=TBlackHole;
+                    stack[sp].tmp = ans;
+                    stack[sp].entry = LUpdate;
+                    stack[sp+1].entry = LEval;
+                    stack[sp+1].expr = ans->thunk.expr;
+                    stack[sp+1].env = ans->thunk.env;
+                    stack[sp+1].tmp= NULL;
+                    sp++;
+                } else {
+                    sp--;
+                }
+            } else if (TLamB == tag) {
+                ans = newClosure(expr->lam, env);
+                sp--;
+            } else if (TAppB == tag) {
+                stack[sp].entry = LApply;
+                stack[sp+1].entry = LEval;
+                stack[sp+1].expr = expr->app.fun;
+                stack[sp+1].env = env;
+                stack[sp+1].tmp = NULL;
+                sp++;
+            } else {
+                cerr << "evaluate : tag = " << tag << endl;
+            }
+        } else if (LUpdate == entry) {
+            *(stack[sp].tmp) = *ans;
+            ans = stack[sp].tmp;
+            sp--;
+        } else if (LApply == entry) {
+            ExprC * funC = ans;
+            if (TClosure == funC->tag) {
+                ExprC * argC = newThunk(expr->app.arg, env);
+                stack[sp].entry = LEval;
+                stack[sp].expr = funC->closure.def.body;
+                stack[sp].env = addToEnvC(argC, funC->closure.env);
+                stack[sp].tmp = NULL;
+            } else {
+                stack[sp].tmp = funC;
+                stack[sp].entry = LMkApp;
+                stack[sp+1].entry = LEval;
+                stack[sp+1].expr = expr->app.arg;
+                stack[sp+1].env = env;
+                stack[sp+1].tmp = NULL;
+                sp++;
+            }
+        } else if (LMkApp == entry) {
+            ExprC * argC = ans;
+            ExprC * funC = stack[sp].tmp;
+            ans = newAppC(funC, argC);
+            sp--;
+        } else {
+            cerr << "evaluate : entry = " << entry << endl;
+        }
+    }
+    return ans;
+}
+
 ExprC * freshVar() {
     static int k = 0;
     ostringstream out;
@@ -229,7 +323,7 @@ Expr * padVar(ExprC * expr) {
     } else if (TClosure == tag) {
         ExprC * fvar = freshVar();
         EnvC * env = addToEnvC(fvar, expr->closure.env);
-        ans = newLam(fvar->var.name, padVar(eval(expr->closure.def.body, env)));
+        ans = newLam(fvar->var.name, padVar(evaluate(expr->closure.def.body, env)));
     } else {
         cerr << "padVar : tag = " << tag << endl;
         ans = NULL;
@@ -278,14 +372,15 @@ string showExpr(Expr * expr) {
 int main() {
     Heap = new ExprC[MAX_HEAP_SIZE];
     EnvHeap = new EnvC[MAX_ENV_HEAP_SIZE];
-    Expr * id = newLam("x", newVar("x"));
+    Expr * varx = newVar("x");
+    Expr * id = newLam("x", varx);
     Expr * expr = queens();
     ExprB * idB = analysis(id, emptyEnvB());
     ExprB * exprB = analysis(expr, emptyEnvB());
     cout << showExpr(id) << endl;
     cout << showExpr(expr) << endl;
-    cout << showExpr(padVar(eval(idB, emptyEnvC()))) << endl;
-    cout << showExpr(padVar(eval(exprB, emptyEnvC()))) << endl;
+    cout << showExpr(padVar(evaluate(idB, emptyEnvC()))) << endl;
+    cout << showExpr(padVar(evaluate(exprB, emptyEnvC()))) << endl;
     cout << "Hp = " << Hp << " (MAX " << MAX_HEAP_SIZE << ")" << endl;
     cout << "Memory = " << Hp * sizeof(ExprC) / 1024 / 1024 << " MB" << endl;
     cout << "EnvHp = " << EnvHp << " (MAX " << MAX_ENV_HEAP_SIZE << ")" << endl;

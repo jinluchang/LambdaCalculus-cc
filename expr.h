@@ -146,8 +146,24 @@ Expr * newLam(std::string * parm, Expr * body);
 Expr * newLam(const char * parm_cstr, Expr * body);
 Expr * newApp(Expr * fun, Expr * arg);
 
-ExprC * eval(ExprB * expr, EnvC * env);
-ExprC * apply(ExprB * fun, ExprB * arg, EnvC * env);
+ExprB * newVarB(std::string * name);
+ExprB * newBoundB(int index);
+ExprB * newLamB(ExprB * body);
+ExprB * newAppB(ExprB * fun, ExprB * arg);
+
+ExprC * freshVarC();
+ExprC * newVarC(std::string * name);
+ExprC * newAppC(ExprC * fun, ExprC * arg);
+ExprC * newClosure(LamB def, EnvC * env);
+ExprC * newThunk(ExprB * expr, EnvC * env);
+
+EnvB * emptyEnvB();
+EnvB * addToEnvB(std::string * name, EnvB * oldEnv);
+ExprB * lookupEnvB(Var var, EnvB * env);
+
+EnvC * emptyEnvC();
+EnvC * addToEnvC(ExprC * value, EnvC * oldEnv);
+ExprC * lookupEnvC(BoundB bound, EnvC * env);
 
 std::string showExpr(Expr * expr);
 std::string showAExpr(Expr * expr);

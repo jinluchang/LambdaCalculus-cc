@@ -1,3 +1,3 @@
 A simple lambda calculus interpreter implemented in C++
 
-Currently, there is no GC and no parser.
+Currently, there is no parser.

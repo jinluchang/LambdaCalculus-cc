@@ -93,6 +93,7 @@ enum TagC {
     TClosure,
     TThunk,
     TBlackHole,
+    TIndC,
 };
 
 class ExprC;
@@ -129,6 +130,7 @@ public :
         AppC app;
         Closure closure;
         Thunk thunk;
+        ExprC * ind;
     };
 };
 
